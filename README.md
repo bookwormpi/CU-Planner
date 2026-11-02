@@ -1,100 +1,174 @@
-# cu_planner
+# CU Planner
 
-Plans a CU Boulder degree, minor or certificate from the public catalog, builds conflict-free
-schedules from Class Search, and tells you when your registration window opens.
+CU Planner helps University of Colorado Boulder students explore degree requirements, build
+term-by-term course plans, find conflict-free class schedules, and look up registration windows.
+It uses the public CU Boulder catalog, Class Search, and registrar information.
 
+## Important: vibe-coded project and security disclaimer
+
+**This project is vibe-coded. No guarantees are given about its security, privacy, reliability,
+or fitness for any particular purpose. Use it at your own risk.**
+
+The application may contain bugs or security vulnerabilities. Do not assume it protects sensitive
+information or credentials. Be especially careful when importing degree audits or providing browser
+cookies, and do not expose the application to untrusted networks without independently assessing
+and securing it.
+
+Plans, schedules, and registration information may be incomplete or incorrect. This tool is not a
+substitute for official CU Boulder systems or academic advising. Verify important decisions with
+official sources and your advisor.
+
+## Features
+
+- Combine majors, minors, and certificates in a term-by-term plan.
+- Account for completed and in-progress courses, prerequisites, corequisites, credit limits, and
+  known term offerings.
+- Explore electives, adjust the plan manually, and identify potential requirement overlaps.
+- Find non-overlapping class sections and filter by time, days, and availability.
+- Estimate registration windows and optionally export a calendar file.
+- Use a local browser interface or the command line.
+
+## Getting started
+
+### Requirements and installation
+
+You need Python, pip, and an internet connection to fetch current catalog and class information.
+From the project directory, install the dependencies:
+
+```sh
+python -m pip install -r requirements.txt
 ```
-pip install -r requirements.txt
 
-# Easiest: the graphical interface (opens in your browser, runs only on your machine)
+### Launch the graphical interface
+
+```sh
 python -m cu_planner gui
-
-# Or use the command line:
-
-# 1. Term-by-term plan that respects prerequisites (search words or a catalog URL)
-python -m cu_planner plan --program "computer science bs" --start "Spring 2027" \
-       --completed "CSCI 1300, APPM 1350, PHYS 1110"
-
-# 2. Section combinations with no time conflicts
-python -m cu_planner schedule --term "Spring 2027" \
-       --courses "CSCI 2270, APPM 1360, PHYS 1120" --earliest 9:00 --avoid-days F
-
-# 3. When can I register?  (credits = completed hours incl. transfer/AP)
-python -m cu_planner register --term "Spring 2027" --credits 62 --ics register.ics
-
-# Or all three: plan -> schedules for the first planned term -> registration dates
-python -m cu_planner go --program "computer science bs" --credits 62 --completed "..."
 ```
 
-In the GUI, add any number of majors, minors and certificates as chips (search, then pick each;
-× removes one) to build a combined plan. Courses
-required by both are scheduled once and identified as shared; elective pools remain separate
-unless the catalog identifies the same specific course for both. Confirm that course sharing
-is allowed by both departments. Enter courses in progress in the selected start term; those
-courses appear in that term and count as completed for remaining requirements and prerequisites.
-In Settings, paste the text of your degree audit (Audit Results tab → select all → copy) and click
-Import audit to fill in earned, transfer and in-progress courses. Earned or in-progress courses that
-aren't named requirements (transfer humanities, honors, etc.) fill matching elective slots. For AP/IB/dual
-credit, enter the CU-equivalent course codes shown on your credit evaluation.
-The plan rebuilds automatically when you change programs, start term, years, focus area or settings
-(with a progress overlay). Your whole page (programs, settings, imported credit, dragged plan, term
-schedule inputs) is saved per visitor: each browser gets a private random cookie and its own file under
-`~/.config/cu_planner/users/`, so every person sees their own page on each visit. Catalog and Class
-Search responses are cached on disk (`~/.cache/cu_planner`) and in memory; failed pages aren't retried
-for 10 minutes, and stale cache is used if a site is down.
-Drag a course card between term columns to rearrange your plan. The arrow buttons on each card
-do the same thing without dragging; term credit totals update immediately, and “Pick classes”
-uses the courses currently shown in that term. Manual moves don't automatically re-sequence courses;
-the board flags prerequisite and term-offering conflicts.
+The app opens in your browser and listens locally at `http://127.0.0.1:8765`. To use another port,
+run `python -m cu_planner gui --port 8766`. Stop the server with Ctrl+C in the terminal.
 
-If `--program` words match several pages the tool lists them; pick one with `--pick N` or paste the
-catalog URL directly. For a minor, search for it the same way ("computer science minor").
+## Using the graphical interface
 
-## How it works
+1. Search for and select one or more majors, minors, or certificates.
+2. Set your start term, completion target, and planning preferences. The default completion target
+   is four years; the allowed range is one to ten years.
+3. Enter completed and in-progress courses. In Settings, you can also paste your degree audit from
+   the Audit Results tab and select **Import audit**. For AP, IB, or dual credit, use the
+   CU-equivalent course codes shown on your credit evaluation.
+4. Review the generated plan. Drag course cards or use their arrow buttons to move courses between
+   terms. Manual moves do not automatically resequence the plan; prerequisite and term-offering
+   conflicts are flagged.
+5. Use the elective placeholders to search for courses, then use a term's scheduling controls to
+   build a timetable. In the Schedule tab, select or pin sections to refit the other courses around
+   them. Pins override the closed-section and time-window filters.
 
-| Piece | Source | Notes |
-|---|---|---|
-| Requirements | program page on catalog.colorado.edu (`table.sc_courselist`) | "or" rows become alternatives, "pick N" lists become pools |
-| Prerequisites | `catalog.colorado.edu/courses-a-z/<subject>/` | `(A or B) and (C or D)` parsed into a tree; prerequisites missing from your program (e.g. a calculus lead-in) are added automatically |
-| Sequencing | `planner.py` | Greedy by longest downstream chain, honoring prerequisites, corequisites, a credit cap, and Fall/Spring offering when known and never placing a course before the term the catalog's recommended plan puts it in |
-| Sections | `classes.colorado.edu/api/?page=fose&route=search` | One lecture/recitation/lab per course, no overlaps, ranked by gaps, campus days and early starts |
-| Registration | registrar "Continuing Student Enrollment Dates" post | Spring 2027 dates are built in; other terms: `--enroll-url <post>` |
+The plan rebuilds when programs or planning settings change. Shared required courses are scheduled
+once, while elective pools remain separate unless the catalog identifies the same specific course
+for both. An already planned course can be selected to satisfy an eligible elective without
+counting its credits twice. Confirm all course sharing and double-counting with your advisor.
 
-Useful flags: `--prefer "ECEN 1310"` (pick that alternative), `--infer-offerings` (learns which courses
-run only Fall or only Spring from the last four terms of Class Search), `--include-closed`,
-`--max-credits`, `--appointment "2026-11-09 08:45"` (your exact Buff Portal time, for the .ics).
+The planner balances credits across available terms and reports required courses or elective
+credits that do not fit within the chosen completion target and credit limit. The start term counts
+toward that target, including when it contains in-progress courses. Catalog term order is a
+preference, not a hard constraint. Some equivalent courses, such as APPM and MATH calculus courses
+on the same topic, are treated as equivalent for prerequisites and requirements.
 
-## Limits you should know about
+## Command-line usage
 
-- **Live endpoints are untested.** The parsers are checked offline against fixtures shaped like the
-  CourseLeaf catalog, the Class Search JSON and the registrar post (`python tests/test_offline.py`).
-  If a live call returns nothing, see below.
-- Not modeled: major/standing restrictions, minimum-grade rules, and capstone credit thresholds.
-  Catalog prerequisites that no listed course can satisfy are skipped (and flagged). Pre-calculus
-  placement is assumed unless you tick "I still need pre-calculus". Confirm with your advisor.
-- **One page.** The GUI builds the whole degree (default: finish in 4 years, 16-18 credits/term,
-  pick a focus area), then "Plan this semester" on any term builds a timetable and suggests
-  electives that fit it (double-counting ones first). "Add to plan" fills the slot.
-- Class Search blocks scripts with a bot challenge. If live sections are unavailable, suggestions
-  use the catalog only. To get live data, paste your browser's `Cookie` header into the
-  "Connect Class Search" box (kept in memory only).
-- Your exact appointment time is only in Buff Portal. The tool gives your block's first slot.
+Run `python -m cu_planner --help` for the available commands, or append `--help` to a command for
+its options. The following examples use Spring 2027; replace terms and courses as appropriate.
 
-## If a scraper breaks
+### Build a degree plan
 
-- Catalog tables: save the program page HTML, adjust `parse_program` in `catalog.py`, and update the
-  fixture in `tests/test_offline.py` first so you can see it pass.
-- Class Search: in the browser, open DevTools -> Network, run a search at classes.colorado.edu, and
-  compare the request body and result keys with `_search()` / `_section_from()` in `classsearch.py`.
-  Status codes (`A` = open) and meeting-time fields are the likeliest differences.
-- Cached pages live in `~/.cache/cu_planner`; delete it to force fresh downloads.
+```sh
+python -m cu_planner plan --program "computer science bs" --start "Spring 2027" \
+  --completed "CSCI 1300, APPM 1350, PHYS 1110"
+```
 
-Terms are balanced: remaining credits are spread evenly across the terms the prerequisite chains allow, rather than front-loading. Elective requirements from the catalog plan (humanities, technical, free, ...) appear as dashed "Choose a course" boxes; open one to filter a course list and hover an option to see its description, credits, prerequisites and typical terms. A lecture and the lab/recitation course its catalog entry says is normally taken with it (e.g. PHYS 1120 + PHYS 1140) are placed in the same term. In the Schedule tab, recitation/lab sections are only paired with lectures whose section numbers match (100 with 101-104) when the data supports that. In the Schedule tab's table, change a course's section with its dropdown or click its 📌 to pin the current one; the other courses are re-fitted around it. A pin overrides the closed/time-window filters, is saved per visitor, and "Clear" in the pinned-sections line removes them all. APPM/MATH calculus courses on the same topic (e.g. APPM 1350 = MATH 1300) are treated as equivalent for prerequisites and requirements.
+`--program` accepts search words or a catalog URL. If a search returns multiple matches, rerun with
+`--pick N` or use the desired URL. Use `--prefer` to favor alternatives, `--max-credits` to set the
+credit cap, and `--infer-offerings` to infer seasonal offerings from previous Class Search terms.
 
-The degree planner has a configurable completion target (1–10 years, default six for the current combined BSAE + APS-minor plan). The limit counts the start term; if courses are in progress, they occupy that term. Courses are prioritized over elective placeholders, catalog term order is a preference rather than a hard constraint, and empty terms are omitted. If the selected horizon cannot fit required courses or elective credits at the per-term credit cap, the plan reports the remaining work. Elective search results identify courses equivalent to already planned program requirements as possible double-credit options; selecting one already in the plan marks the elective as satisfied by that course without counting its credits twice. Confirm applicability with an advisor.
+### Find class schedules
 
-## Elective lists
+```sh
+python -m cu_planner schedule --term "Spring 2027" \
+  --courses "CSCI 2270, APPM 1360, PHYS 1120" --earliest 9:00 --avoid-days F
+```
 
-The elective dropdowns use CU's own lists: Class Search's "ENGR GenEd" attributes (writing and Humanities & Social
-Sciences, unioned over the last several terms), the College of Engineering H&SS page, and the Aerospace department's
-math/science/technical elective page (`cu_planner/official.py`). If a source can't be reached, the built-in copy is used.
+Other options include `--latest`, `--include-closed`, and `--results`. In `--avoid-days`, use
+`M T W R F`, where `R` means Thursday. Confirm lecture, recitation, and lab combinations in Class
+Search before registering.
+
+### Look up registration dates
+
+```sh
+python -m cu_planner register --term "Spring 2027" --credits 62 --ics register.ics
+```
+
+Credits are completed hours, including transfer and AP credit. Spring 2027 dates are built in; for
+other terms, provide the registrar's **Continuing Student Enrollment Dates** page with
+`--enroll-url`. The result identifies the start of your credit block, not your exact appointment.
+Find the latter in Buff Portal; optionally provide it with
+`--appointment "2026-11-09 08:45"` when exporting an `.ics` file.
+
+### Run the combined workflow
+
+```sh
+python -m cu_planner go --program "computer science bs" --start "Spring 2027" \
+  --credits 62 --completed "CSCI 1300, APPM 1350"
+```
+
+This builds a plan, searches for schedules for its first planned term, and looks up registration
+dates.
+
+## Data sources and storage
+
+| Component | Source or behavior |
+| --- | --- |
+| Requirements and prerequisites | CU Boulder catalog program and course pages |
+| Course sections | CU Boulder Class Search |
+| Registration dates | CU Boulder registrar enrollment-date posts; Spring 2027 data is built in |
+| Electives | CU engineering and aerospace elective lists and Class Search attributes; built-in lists are used when a source is unavailable |
+
+The GUI saves page state, including imported audit text and plan settings, per browser visitor under
+`~/.config/cu_planner/users/` by default. `CU_PLANNER_STATE_DIR` changes this directory. Catalog and
+Class Search responses are cached in memory and under `~/.cache/cu_planner`; stale cached responses
+may be used when a site is unavailable. Failed pages are not retried for ten minutes.
+
+Class Search may block scripted requests with a bot challenge. If live sections are unavailable,
+the GUI can use catalog-only suggestions. The **Connect Class Search** control accepts a browser
+`Cookie` header for the current process; that cookie is kept in memory. Treat it as a credential and
+only provide it if you understand the risk.
+
+## Limitations
+
+- Live endpoints are untested; offline parser tests use fixtures shaped like the catalog, Class
+  Search, and registrar pages. External site changes may break scraping or make results incomplete.
+- Major or standing restrictions, minimum-grade rules, and capstone credit thresholds are not
+  modeled. Unsatisfied catalog prerequisites that no listed course can satisfy are skipped and
+  flagged. Pre-calculus placement is assumed unless you indicate otherwise.
+- Lecture, recitation, and lab pairings may be inferred from section numbers. Verify the combination
+  and current availability in Class Search.
+- Registration estimates are based on credit blocks. Your individual appointment may be later;
+  check Buff Portal.
+- The tool does not determine whether every shared course or elective is accepted by your programs.
+  Confirm requirements and applicability with your advisor.
+
+## Testing and troubleshooting
+
+Run the offline tests from the project directory:
+
+```sh
+python tests/test_offline.py
+```
+
+If a scraper stops working:
+
+- For catalog pages, inspect the program page's requirements table and update `parse_program` in
+  [`cu_planner/catalog.py`](cu_planner/catalog.py) and the related offline fixtures.
+- For Class Search, compare the browser's network request and response with `_search()` and
+  `_section_from()` in [`cu_planner/classsearch.py`](cu_planner/classsearch.py).
+- Cached responses live in `~/.cache/cu_planner`; removing the relevant cached data forces a fresh
+  download on the next request.
