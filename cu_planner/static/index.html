@@ -1,0 +1,1703 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CU Planner</title>
+    <style>
+      :root {
+        --ink: #17181a;
+        --mute: #6c6f74;
+        --line: #dcd9d0;
+        --bg: #eceae3;
+        --card: #fff;
+        --gold: #b8963e;
+        --goldbg: #fbf3dc;
+        --blue: #2a6fb0;
+        --bluebg: #e6f1fb;
+        --red: #b00020;
+        --redbg: #fdecee;
+        --ok: #2e7d32;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font: 13px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
+      }
+      button, input, select, textarea { font: inherit; color: inherit; }
+      .mute { color: var(--mute); }
+      .hide { display: none !important; }
+
+      /* ---- top bar ---- */
+      #top {
+        flex-wrap: nowrap;
+        background: #111;
+        color: #fff;
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        padding: 8px 14px 10px;
+        position: relative;
+        z-index: 20;
+      }
+      #top h1 { font-size: 17px; margin: 0 8px 6px 0; letter-spacing: 0.2px; white-space: nowrap; }
+      #top h1 b { color: #cfb87c; }
+      .f { display: flex; flex-direction: column; gap: 2px; position: relative; min-width: 0; }
+      .f > label { font-size: 9.5px; letter-spacing: 0.6px; text-transform: uppercase; color: #a9a9a9; }
+      #top input:not(#program), #top select {
+        background: #26272a;
+        border: 1px solid #3a3b3f;
+        color: #fff;
+        border-radius: 6px;
+        padding: 6px 8px;
+        height: 32px;
+        width: 100%;
+      }
+      #top input::placeholder { color: #8b8d92; }
+      #top input:not(#program):focus, #top select:focus { outline: 2px solid #cfb87c; outline-offset: -1px; }
+      #openPrograms { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px; background: #26272a; border: 1px solid #3a3b3f; color: #fff; border-radius: 6px; cursor: pointer; text-align: left; font: inherit; }
+      #openPrograms:hover { border-color: #cfb87c; }
+      #openPrograms span.t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #openPrograms span.t.none { color: #c9c9cc; font-style: italic; }
+      #openPrograms span:last-child { color: #cfb87c; font-size: 12px; }
+      #openPrograms .n { background: #cfb87c; color: #111; border-radius: 10px; font-size: 11px; font-weight: 700; padding: 1px 7px; }
+      #openPrograms .n:empty { display: none; }
+      .f.progs { flex: 1 1 0; min-width: 220px; }
+      #progList { margin: 6px 0 4px; }
+      #progList h4 { margin: 10px 0 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); }
+      .prow { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-left: 4px solid #cfb87c; border-radius: 6px; margin-bottom: 5px; background: #fff; }
+      .prow.minor { border-left-color: #5aa9e0; }
+      .prow span { flex: 1; font-weight: 600; }
+      .prow button { border: 0; background: none; color: #b3261e; cursor: pointer; font-size: 12px; }
+      .prow button:hover { text-decoration: underline; }
+      .pnone { color: var(--mute); font-size: 12.5px; padding: 4px 0; }
+      .pempty { border: 1.5px dashed #cfc9b8; border-radius: 8px; background: #faf8f1; text-align: center; padding: 16px 12px; color: var(--mute); font-size: 13px; }
+      .pempty b { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+      #dlgPrograms .suggest { position: static; box-shadow: none; border: 1px solid var(--line); margin-top: 6px; max-height: 240px; overflow-y: auto; }
+      #dlgPrograms .suggest { max-height: 300px; }
+      #dlgPrograms .suggest button { display: flex; justify-content: space-between; gap: 10px; }
+      #dlgPrograms .suggest button::after { content: "+ Add"; color: #8a6d1f; font-weight: 600; white-space: nowrap; }
+      .suggest {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        min-width: 280px;
+        background: #fff;
+        color: var(--ink);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px #0004;
+        overflow: hidden;
+        z-index: 30;
+      }
+      .suggest:empty { display: none; }
+      .suggest button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: 0;
+        background: none;
+        padding: 8px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      }
+      .suggest button:hover { background: var(--goldbg); }
+      .btn {
+        border: 0;
+        border-radius: 6px;
+        background: #cfb87c;
+        color: #111;
+        font-weight: 650;
+        padding: 0 14px;
+        height: 32px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .btn:hover { filter: brightness(1.06); }
+      .btn:disabled { opacity: 0.5; cursor: progress; }
+      .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); font-weight: 500; height: 28px; padding: 0 10px; }
+      #top .btn.ghost { border-color: #4a4b50; color: #ddd; height: 32px; }
+      .spin { display: none; font-size: 12px; color: var(--mute); }
+      .spin.on { display: inline-block; }
+      #top .spin { color: #cfb87c; align-self: center; margin-bottom: 4px; }
+
+      /* ---- build overlay ---- */
+      #building { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(15, 16, 20, 0.72); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+      #building.on { opacity: 1; pointer-events: auto; }
+      #building .card { text-align: center; color: #fff; width: min(360px, 86vw); }
+      #building .orbit { position: relative; width: 120px; height: 120px; margin: 0 auto 22px; }
+      #building .orbit i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; border-top-color: #cfb87c; animation: spin 1.2s linear infinite; }
+      #building .orbit i:nth-child(2) { inset: 14px; border-top-color: #fff; animation-duration: 1.9s; animation-direction: reverse; }
+      #building .orbit i:nth-child(3) { inset: 28px; border-top-color: #6ea8ff; animation-duration: 2.6s; }
+      #building .orbit b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 30px; animation: pulse 1.6s ease-in-out infinite; }
+      #building h2 { margin: 0 0 6px; font-size: 20px; letter-spacing: 0.02em; }
+      #building p { margin: 0 0 16px; min-height: 1.3em; color: #cfd0d6; font-size: 13px; transition: opacity 0.2s; }
+      #building .bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+      #building .bar span { display: block; height: 100%; width: 40%; border-radius: 2px; background: linear-gradient(90deg, #cfb87c, #fff); animation: slide 1.3s ease-in-out infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes pulse { 50% { transform: scale(1.15); } }
+      @keyframes slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+      @media (prefers-reduced-motion: reduce) { #building .orbit i, #building .orbit b, #building .bar span { animation: none; } }
+
+      /* ---- workspace ---- */
+      #work {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 430px;
+        gap: 10px;
+        padding: 10px;
+        min-height: 0;
+      }
+      #boardWrap { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 8px; }
+      #planMsg:empty, #choices:empty { display: none; }
+      #choices { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+      #choices h3 { margin: 0 0 6px; font-size: 13px; }
+      #choices div { display: inline-block; margin: 0 6px 6px 0; }
+      #planOut { flex: 1; min-height: 0; display: grid; }
+      .empty {
+        place-self: center;
+        text-align: center;
+        max-width: 420px;
+        color: var(--mute);
+      }
+      .empty h2 { color: var(--ink); margin: 0 0 6px; font-size: 20px; }
+      .terms {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        min-height: 0;
+      }
+      .term {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .term.sel { border-color: var(--gold); box-shadow: 0 0 0 2px #cfb87c66; }
+      .term.drag-over { background: var(--goldbg); border-style: dashed; }
+      .th { display: flex; align-items: center; gap: 6px; padding: 7px 9px 3px; }
+      .th .n {
+        width: 18px; height: 18px; border-radius: 50%; background: #111; color: #cfb87c;
+        font-size: 10px; display: grid; place-items: center; flex: none;
+      }
+      .th .nm { font-weight: 650; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .th .go { white-space: nowrap; border: 0; background: none; color: var(--blue); cursor: pointer; font-size: 12px; padding: 0 2px; }
+      .th .go:hover { text-decoration: underline; }
+      .meter { margin: 0 9px 5px; height: 5px; background: #ebe8df; border-radius: 3px; overflow: hidden; position: relative; }
+      .meter i { display: block; height: 100%; background: #cfb87c; }
+      .meter.over i { background: var(--red); }
+      .cr-l { font-size: 11px; color: var(--mute); }
+      .cr-l.over { color: var(--red); font-weight: 650; }
+      .term ul { list-style: none; margin: 0; padding: 0 5px 6px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+      .term li {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: baseline;
+        column-gap: 6px;
+        padding: 3px 6px;
+        margin-bottom: 3px;
+        border-radius: 6px;
+        background: var(--goldbg);
+        border-left: 3px solid var(--gold);
+        cursor: grab;
+      }
+      .term li.added { background: var(--bluebg); border-left-color: var(--blue); }
+      .term li.gen { background: #fff; border: 1px dashed #b5b2a8; border-left: 3px dashed #b5b2a8; cursor: pointer; }
+      .term li.gen:hover { background: #faf9f5; }
+      .term li.dragging { opacity: 0.4; }
+      .term li[draggable="false"] { cursor: default; background: #f1f0ea; border-left-color: #b9b6ab; }
+      li .c { font-weight: 650; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      li .t { color: var(--mute); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      li .k { font-size: 11px; color: var(--mute); }
+      li .tag { grid-column: 1 / -1; font-size: 10.5px; color: var(--ok); }
+      li .wn { color: var(--red); font-weight: 700; cursor: help; }
+      li .mv { position: absolute; right: 3px; top: 2px; display: none; background: #fffc; border-radius: 4px; }
+      li:hover .mv { display: flex; }
+      li .mv button { border: 0; background: none; cursor: pointer; padding: 0 4px; color: var(--mute); }
+      li .mv button:hover { color: var(--ink); }
+      li .un { grid-column: 1 / -1; font-size: 10.5px; color: var(--blue); border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+
+      /* ---- side planner ---- */
+      #side {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+      #side header { padding: 10px 12px 8px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+      .row { display: flex; gap: 6px; align-items: center; }
+      #side select, #side input[type="text"], #side input[type="time"], #side input[type="number"], #side input[type="datetime-local"], #side input:not([type]) {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 4px 7px;
+        height: 28px;
+        background: #fff;
+        min-width: 0;
+      }
+      #sterm { flex: 1; font-weight: 650; }
+      #side details { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+      #side summary { cursor: pointer; color: var(--mute); font-size: 12px; }
+      .prefs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin-top: 6px; }
+      .prefs label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); display: block; }
+      .prefs input { width: 100%; }
+      .days { display: flex; gap: 6px; }
+      .days label { text-transform: none; font-size: 12px; letter-spacing: 0; display: flex; align-items: center; gap: 2px; color: var(--ink); }
+      #tabs { display: flex; border-bottom: 1px solid var(--line); }
+      #tabs button {
+        flex: 1; border: 0; background: none; padding: 8px 4px; cursor: pointer; color: var(--mute);
+        border-bottom: 2px solid transparent; font-weight: 600;
+      }
+      #tabs button.on { color: var(--ink); border-bottom-color: var(--gold); }
+      .pane { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px; display: none; }
+      .pane.on { display: block; }
+      .callout { background: var(--goldbg); border: 1px solid #e7d7a3; border-radius: 6px; padding: 6px 9px; margin: 0 0 8px; font-size: 12px; }
+      .callout.err { background: var(--redbg); border-color: #f1b8c0; color: var(--red); }
+      .callout button { margin-left: 6px; }
+      .sub-tabs { display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+      .sub-tabs .hint { flex: none; align-self: center; color: var(--mute); font-size: 11px; margin-right: 2px; white-space: nowrap; }
+      .sub-tabs button { flex: none; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 4px 10px; cursor: pointer; line-height: 1.25; }
+      .prio { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .prio label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); white-space: nowrap; }
+      .prio select { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: #fff; }
+      .ccards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 12px; }
+      .ccard { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; background: #fff; padding: 6px 10px; }
+      .ccard .chd { display: flex; gap: 8px; align-items: baseline; }
+      .ccard .chd span { color: var(--mute); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+      .csec { padding: 5px 0; border-top: 1px solid #efede6; margin-top: 5px; }
+      .csec:first-of-type { border-top: 0; margin-top: 2px; }
+      .crow { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+      .crow .kind { background: #f1efe8; border-radius: 4px; padding: 1px 6px; font-size: 10.5px; font-weight: 650; }
+      .crow .dot { margin: 0 0 0 auto; }
+      .cmeta { font-size: 11.5px; color: var(--mute); margin-top: 2px; }
+      .pinbar { font-size: 12px; margin-bottom: 8px; color: var(--blue); }
+      .secsel { min-width: 0; width: 0; flex: 1 1 0; max-width: 100%; text-overflow: ellipsis; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; background: #fff; font-size: 12px; }
+      .pinbtn { border: 0; background: none; cursor: pointer; opacity: .25; filter: grayscale(1); font-size: 14px; padding: 0 2px; }
+      .pinbtn:hover { opacity: .7; }
+      .pinbtn.on { opacity: 1; filter: none; }
+      .prio-note { color: var(--mute); font-size: 11.5px; margin: -2px 0 8px; }
+      .sub-tabs button small { display: block; color: var(--mute); font-size: 10.5px; white-space: nowrap; }
+      .sub-tabs button.on small { color: #cfb87c; }
+      .sub-tabs button.on { background: #111; color: #cfb87c; border-color: #111; }
+      h3, h4 { margin: 10px 0 4px; font-size: 13px; }
+      h3:first-child { margin-top: 0; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); padding: 3px 4px; }
+      td { padding: 4px; border-top: 1px solid #eee; vertical-align: top; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; background: var(--ok); }
+      .dot.x { background: var(--red); }
+
+      .cal { display: grid; grid-template-columns: 34px repeat(var(--cols, 5), 1fr); font-size: 10px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+      .cal .hd { text-align: center; padding: 3px 0; background: #f6f5f0; font-weight: 650; border-bottom: 1px solid var(--line); }
+      .cal .hrs div { height: 33px; color: var(--mute); text-align: right; padding-right: 3px; font-size: 9.5px; }
+      .cal .col { position: relative; border-left: 1px solid #eee; background: repeating-linear-gradient(#fff 0 32px, #f1efe8 32px 33px); }
+      .blk { position: absolute; left: 1px; right: 1px; border-radius: 4px; padding: 1px 3px; overflow: hidden; line-height: 1.15; border: 1px solid #0002; }
+      .blk b { display: block; }
+
+      .suggs { list-style: none; padding: 0; margin: 0; }
+      .sugg { padding: 7px 0; border-top: 1px solid #eee; }
+      .sugg .cr { color: var(--mute); }
+      .sugg .btn { margin-top: 4px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+      .chip { background: #f1efe8; border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+      .chip.good { background: #e3f2e4; color: var(--ok); }
+
+      .big { font-size: 20px; font-weight: 700; margin: 2px 0; }
+      .tl .ev { border-left: 3px solid var(--line); padding: 2px 0 8px 10px; }
+      .tl .ev.you { border-color: var(--gold); background: var(--goldbg); }
+      .tl .ev.past { opacity: 0.5; }
+      .reg-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin-bottom: 8px; }
+      .reg-form label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); display: block; }
+      .reg-form input, .reg-form select { width: 100%; }
+      .reg-form .wide { grid-column: 1 / -1; }
+
+      /* ---- status bar ---- */
+      #bar {
+        overflow: hidden;
+        display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+        background: #fff; border-top: 1px solid var(--line); font-size: 12px; min-height: 36px;
+      }
+      #stats { font-weight: 650; flex: 0 1 34%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #flags { display: flex; gap: 6px; flex: 1 1 0; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+      .flag { white-space: nowrap; border: 0; border-radius: 10px; padding: 2px 9px; cursor: pointer; background: var(--goldbg); }
+      .flag.err { background: var(--redbg); color: var(--red); }
+      .legend { display: flex; gap: 10px; color: var(--mute); flex: none; white-space: nowrap; }
+      .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
+
+      /* ---- dialogs & floating pickers ---- */
+      dialog { border: 0; border-radius: 12px; padding: 0; width: min(640px, 92vw); max-height: 86vh; box-shadow: 0 20px 60px #0005; }
+      dialog::backdrop { background: #0006; }
+      dialog .dh { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+      dialog .dh h2 { margin: 0; font-size: 16px; }
+      dialog .db { padding: 12px 16px; overflow-y: auto; max-height: calc(86vh - 110px); }
+      dialog .df { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+      dialog label.l { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); margin: 10px 0 3px; }
+      dialog textarea, dialog input[type="text"], dialog input[type="password"], dialog input[type="number"], dialog input:not([type]) {
+        width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+      }
+      dialog textarea { min-height: 54px; resize: vertical; }
+      dialog .chk { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+      #pickPanel {
+        position: fixed; z-index: 60; width: 340px; max-height: 380px; background: #fff; border: 1px solid var(--line);
+        border-radius: 10px; box-shadow: 0 12px 34px #0004; display: flex; flex-direction: column; overflow: hidden;
+      }
+      #pickPanel input { margin: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+      #pickPanel .note { padding: 0 10px 6px; color: var(--mute); font-size: 11.5px; }
+      #pickList { overflow-y: auto; flex: 1; }
+      #pickList > div { padding: 6px 10px; border-top: 1px solid #f0eee8; cursor: pointer; }
+      #pickList > div:hover { background: var(--goldbg); }
+      #pickList small { display: block; color: var(--ok); }
+      #pickTip {
+        position: fixed; z-index: 70; width: 320px; background: #111; color: #eee; border-radius: 8px;
+        padding: 10px 12px; font-size: 12px; box-shadow: 0 10px 30px #0006; pointer-events: none;
+      }
+      #pickTip b { display: block; color: #cfb87c; }
+      #pickTip p { margin: 6px 0 0; }
+
+      @media (max-width: 1050px) {
+        body { overflow: auto; display: block; }
+        #top { flex-wrap: wrap; }
+        #work { grid-template-columns: 1fr; }
+        .terms { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
+        .term { max-height: 340px; }
+        #side { min-height: 560px; }
+      }
+    </style>
+  </head>
+
+  <body style="overflow-x: hidden">
+    <div id="building" role="status" aria-live="polite" aria-hidden="true">
+      <div class="card">
+        <div class="orbit"><i></i><i></i><i></i><b>🚀</b></div>
+        <h2>Building your plan</h2>
+        <p id="buildMsg">Reading the catalog…</p>
+        <div class="bar"><span></span></div>
+      </div>
+    </div>
+    <div id="top">
+      <h1>CU <b>Planner</b></h1>
+      <div class="f progs">
+        <label for="openPrograms">Majors &amp; minors</label>
+        <button id="openPrograms" type="button"><span class="t none">Choose majors &amp; minors…</span><span class="n"></span><span aria-hidden="true">▾</span></button>
+      </div>
+      <div class="f sm"><label for="start">Start</label><select id="start"></select></div>
+      <div class="f xs"><label for="finishYears">Years</label><input id="finishYears" type="number" min="1" max="10" step="1" value="4" /></div>
+      <div class="f md"><label for="focus">Focus area</label><select id="focus"><option value="">Recommended</option></select></div>
+      <button class="btn ghost" id="openSettings" type="button">⚙ Settings</button>
+      <button class="btn" id="goPlan" type="button">Build plan</button>
+    </div>
+
+    <div id="work">
+      <div id="boardWrap">
+        <div id="planMsg"></div>
+        <div id="choices"></div>
+        <div id="planOut">
+          <div class="empty">
+            <h2>Plan your whole degree on one screen</h2>
+            <p>Click <b>Majors &amp; minors</b> above to choose any number of majors and minors, then press <b>Build plan</b>. Drag courses between terms; click a term to plan its schedule on the right.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside id="side">
+        <header>
+          <div class="row">
+            <select id="sterm" aria-label="Term"></select>
+            <button class="btn" id="goSched" type="button">Build schedule</button>
+          </div>
+          <input id="courses" placeholder="Courses for this term, e.g. APPM 1360, PHYS 1120" aria-label="Courses" />
+          <details>
+            <summary>Time preferences</summary>
+            <div class="prefs">
+              <div><label>No classes before</label><input id="earliest" type="time" /></div>
+              <div><label>No classes after</label><input id="latest" type="time" /></div>
+              <div style="grid-column: 1 / -1"><label>Days off</label><div class="days" id="avoid"></div></div>
+              <label style="grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; text-transform: none; font-size: 12px; letter-spacing: 0; color: var(--ink)"><input id="closed" type="checkbox" /> Include full / closed sections</label>
+            </div>
+          </details>
+          <span class="spin" id="spinSched">Asking Class Search…</span>
+        </header>
+        <nav id="tabs">
+          <button data-tab="tt" class="on">Timetable</button>
+          <button data-tab="sg">Suggestions</button>
+          <button data-tab="rg">Register</button>
+        </nav>
+        <section class="pane on" id="pane-tt">
+          <div id="connectBox" style="display: none" class="callout">Live sections unavailable. <button class="btn ghost" id="openConnect" type="button">Connect Class Search…</button></div>
+          <div id="schedMsg"></div>
+          <div id="schedOut"><div class="mute">Select a term on the board, then <b>Build schedule</b> for a conflict-free timetable.</div></div>
+        </section>
+        <section class="pane" id="pane-sg">
+          <div id="suggOut"><div class="mute">Suggestions for the term’s open elective slots appear here after you build a schedule.</div></div>
+        </section>
+        <section class="pane" id="pane-rg">
+          <div class="reg-form">
+            <div><label>Term</label><select id="rterm"></select></div>
+            <div><label>Credits completed</label><input id="rcredits" type="number" value="0" /></div>
+            <div class="wide"><label>Exact appointment (optional, for calendar)</label><input id="appt" type="datetime-local" /></div>
+            <div class="wide"><label>Registrar post URL (only for terms without built-in dates)</label><input id="enrollUrl" placeholder="https://www.colorado.edu/registrar/…" /></div>
+            <div class="wide"><button class="btn" id="goReg" type="button">Show my dates</button> <span class="spin" id="spinReg">Loading…</span></div>
+          </div>
+          <div id="regMsg"></div>
+          <div id="regOut"></div>
+        </section>
+      </aside>
+    </div>
+
+    <div id="bar">
+      <span id="stats" class="mute">No plan yet</span>
+      <div id="flags"></div>
+      <div class="legend">
+        <span><i style="background: var(--goldbg); border: 1px solid var(--gold)"></i>Required</span>
+        <span><i style="background: var(--bluebg); border: 1px solid var(--blue)"></i>Added prerequisite</span>
+        <span><i style="border: 1px dashed var(--mute)"></i>Elective slot</span>
+      </div>
+      <button class="btn ghost" id="resetPlan" type="button">↺ Recommended order</button>
+      <button class="btn ghost" id="openNotes" type="button">Notes</button>
+    </div>
+
+    <dialog id="dlgPrograms">
+      <div class="dh"><h2>Majors &amp; minors</h2><button class="btn ghost" data-close type="button">✕</button></div>
+      <div class="db">
+        <div id="progList"></div>
+        <label class="l" for="program">Add a major, minor or certificate</label>
+        <input id="program" placeholder="Search, e.g. aerospace engineering bs, physics minor…" autocomplete="off" />
+        <div id="programSuggestions" class="suggest" role="listbox"></div>
+      </div>
+      <div class="df"><button class="btn ghost" data-close type="button">Done</button><button class="btn" id="buildFromDialog" type="button">Build plan</button></div>
+    </dialog>
+
+    <dialog id="dlgSettings">
+      <div class="dh"><h2>Settings</h2><button class="btn ghost" data-close type="button">✕</button></div>
+      <div class="db">
+        <label class="l" for="auditText">Import degree audit</label>
+        <textarea id="auditText" placeholder="Open your audit on the Audit Results tab, select all, copy, and paste here"></textarea>
+        <div style="display: flex; gap: 10px; align-items: center; margin: 6px 0 12px">
+          <button class="btn" id="importAudit" type="button">Import audit</button>
+          <span id="auditMsg" style="font-size: 12px; color: var(--mute)"></span>
+        </div>
+        <label class="l" for="completed">Courses already completed (comma-separated)</label>
+        <textarea id="completed" placeholder="CSCI 1300, APPM 1350, PHYS 1110"></textarea>
+        <label class="l" for="inProgress">Courses in progress during the start term</label>
+        <textarea id="inProgress" placeholder="ASEN 1400, APPM 1350"></textarea>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+          <div><label class="l" for="credits">Credits completed (AP / transfer)</label><input id="credits" type="number" min="0" value="0" /></div>
+          <div><label class="l" for="maxcr">Max credits per term</label><input id="maxcr" type="number" min="12" max="21" placeholder="auto (16–18)" /></div>
+        </div>
+        <label class="l" for="prefer">Prefer these when a requirement has alternatives</label>
+        <input id="prefer" placeholder="ECEN 1310" />
+        <label class="chk"><input id="needsPrecalc" type="checkbox" /> I still need pre-calculus (otherwise placed into Calculus 1)</label>
+        <label class="chk"><input id="infer" type="checkbox" /> Learn Fall-only / Spring-only courses from past terms (slower)</label>
+      </div>
+      <div class="df"><button class="btn" data-close type="button">Done</button></div>
+    </dialog>
+
+    <dialog id="dlgNotes">
+      <div class="dh"><h2>Plan notes</h2><button class="btn ghost" data-close type="button">✕</button></div>
+      <div class="db" id="notesBody"></div>
+    </dialog>
+
+    <dialog id="dlgConnect">
+      <div class="dh"><h2>Connect Class Search</h2><button class="btn ghost" data-close type="button">✕</button></div>
+      <div class="db">
+        <p class="mute">Class Search blocks scripts. Open classes.colorado.edu in your browser, copy the request’s <code>Cookie</code> header (DevTools → Network) and paste it below. It is kept in memory only.</p>
+        <input id="cookie" type="password" placeholder="Cookie header value" autocomplete="off" />
+        <p id="connectMsg" class="mute" role="status"></p>
+      </div>
+      <div class="df"><button class="btn" id="goConnect" type="button">Use this cookie</button></div>
+    </dialog>
+
+    <script>
+
+      const $ = (id) => document.getElementById(id),
+        esc = (s) =>
+          String(s ?? "").replace(
+            /[&<>"]/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+          );
+      const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        PAL = [
+          "#f2c46d",
+          "#8fc7f0",
+          "#a8dba0",
+          "#f0a6b8",
+          "#c9b3ef",
+          "#f4b183",
+          "#9fe0d6",
+          "#d6d58a",
+        ];
+
+      let CREDIT_INFO = {};
+      $("importAudit").onclick = async () => {
+        const msg = $("auditMsg");
+        msg.textContent = "Reading…";
+        try {
+          const r = await api("/api/audit", { text: $("auditText").value });
+          CREDIT_INFO = {};
+          r.courses.forEach((c) => (CREDIT_INFO[c.code] = { credits: c.credits, kind: c.kind }));
+          $("completed").value = r.completed.join(", ");
+          $("inProgress").value = r.in_progress.join(", ");
+          $("credits").value = r.earned_hours;
+          msg.textContent = `Found ${r.completed.length} earned (${r.earned_hours} cr) and ${r.in_progress.length} in progress (${r.in_progress_hours} cr). Rebuild the plan to apply.`;
+        } catch (e) {
+          msg.textContent = e.message || String(e);
+        }
+      };
+      async function api(p, b) {
+        const r = await fetch(p, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(b),
+        });
+
+        const text = await r.text();
+        let j;
+
+        try {
+          j = text ? JSON.parse(text) : null;
+        } catch {
+          if (r.status === 202) {
+            throw new Error(
+              "The server accepted the request but has not returned results yet. Please try again shortly.",
+            );
+          }
+          throw new Error(
+            `Server returned an invalid response (HTTP ${r.status}).`,
+          );
+        }
+
+        if (r.status === 202) {
+          throw new Error(
+            j?.error ||
+              "The server accepted the request but has not finished processing it.",
+          );
+        }
+
+        if (!r.ok || j?.error) {
+          throw new Error(j?.error || `Request failed (HTTP ${r.status}).`);
+        }
+
+        if (!j || typeof j !== "object") {
+          throw new Error("The server returned an empty response.");
+        }
+
+        return j;
+      }
+
+      function fillFocus(list) {
+        const sel = $("focus"), cur = sel.value;
+        sel.innerHTML = `<option value="">Recommended default</option>` +
+          list.map((f) => `<option>${esc(f)}</option>`).join("");
+        sel.value = list.includes(cur) ? cur : "";
+      }
+      function tab(name) {
+        document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+        document.querySelectorAll(".pane").forEach((p) => p.classList.toggle("on", p.id === "pane-" + name));
+      }
+      document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
+      const dlg = (id) => { const d = $(id); if (!d.open) d.showModal(); };
+      document.querySelectorAll("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+      $("openSettings").onclick = () => dlg("dlgSettings");
+      $("openNotes").onclick = () => dlg("dlgNotes");
+      $("openConnect").onclick = () => dlg("dlgConnect");
+      function busy(id, on, btn) {
+        $(id).classList.toggle("on", on);
+        $(btn).disabled = on;
+      }
+      function err(id, e) {
+        $(id).innerHTML =
+          `<div class="callout err">${esc(e.message || e)}</div>`;
+      }
+      // term pickers: next 7 Fall/Spring terms that haven't started yet
+      (function () {
+        const n = new Date(),
+          month = n.getMonth();
+        let y = n.getFullYear(),
+          cur;
+        if (month >= 7) cur = "Fall";
+        else if (month <= 4) cur = "Spring";
+        else cur = "Summer";
+        const current = cur + " " + y,
+          L = [current];
+        if (cur === "Summer") L.push("Fall " + y);
+        let season = cur,
+          year = y;
+        while (L.length < 8) {
+          if (season === "Spring") season = "Fall";
+          else if (season === "Fall") {
+            season = "Spring";
+            year++;
+          } else season = "Fall";
+          L.push(season + " " + year);
+        }
+        const o = L.map((t) => `<option>${t}</option>`).join("");
+        ["start", "sterm"].forEach((i) => ($(i).innerHTML = o));
+        const registrationTerms = L.filter((t) => t !== current);
+        $("rterm").innerHTML = registrationTerms
+          .map((t) => `<option>${t}</option>`)
+          .join("");
+      })();
+      $("avoid").innerHTML = ["M", "T", "W", "R", "F"]
+        .map(
+          (c, i) =>
+            `<label><input type="checkbox" value="${c}">${DAYS[i].slice(0, 2)}</label>`,
+        )
+        .join("");
+
+      // ---------- 1. plan ----------
+      // chosen programs: value is a catalog URL (or raw search text), label is for display
+      let PROGS = [];
+      const isMinor = (t) => /\b(minor|certificate)\b/i.test(t);
+      function drawChips() {
+        const row = (p, i) => `<div class="prow ${isMinor(p.label) ? "minor" : ""}"><span>${esc(p.label)}</span><button type="button" data-rm="${i}">Remove</button></div>`;
+        const group = (title, test) => {
+          const rows = PROGS.map((p, i) => [p, i]).filter(([p]) => test(p)).map(([p, i]) => row(p, i)).join("");
+          return `<h4>${title}</h4>` + (rows || `<div class="pnone">None added</div>`);
+        };
+        if (!PROGS.length) {
+          $("progList").innerHTML = `<div class="pempty"><b>No majors or minors yet</b>Search below and pick your major first, then add any minors or a second major.</div>`;
+        } else $("progList").innerHTML = group("Majors", (p) => !isMinor(p.label)) + group("Minors & certificates", (p) => isMinor(p.label));
+        $("progList").querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => { PROGS.splice(+b.dataset.rm, 1); drawChips(); }));
+        const t = document.querySelector("#openPrograms .t");
+        t.classList.toggle("none", !PROGS.length);
+        t.textContent = PROGS.length ? PROGS.map((p) => p.label.replace(/\s*-\s*(Bachelor|Minor|Certificate).*$/i, (m) => (/minor/i.test(m) ? " (minor)" : /certificate/i.test(m) ? " (cert.)" : ""))).join(" + ") : "Choose majors & minors…";
+        document.querySelector("#openPrograms .n").textContent = PROGS.length || "";
+        $("openPrograms").title = PROGS.map((p) => p.label).join("\n");
+      }
+      function addProgram(value, label) {
+        value = value.trim();
+        if (!value || PROGS.some((p) => p.value === value)) return;
+        PROGS.push({ value, label: label || value });
+        // majors first: the first program anchors the plan, minors are layered on top
+        PROGS.sort((a, b) => isMinor(a.label) - isMinor(b.label));
+        drawChips();
+      }
+      const searchState = { timer: null, version: 0 };
+      (function () {
+        const input = $("program"), suggestions = $("programSuggestions");
+        input.addEventListener("input", () => {
+          clearTimeout(searchState.timer);
+          const version = ++searchState.version, q = input.value.trim();
+          suggestions.innerHTML = "";
+          $("planMsg").innerHTML = "";
+          if (q.length < 2) return;
+          searchState.timer = setTimeout(async () => {
+            try {
+              const r = await api("/api/programs", { q });
+              if (version !== searchState.version || q !== input.value.trim()) return;
+              suggestions.innerHTML = r.choices.map((c) => `<button type="button" role="option" data-url="${esc(c.url)}" data-title="${esc(c.title)}">${esc(c.title)}</button>`).join("");
+              suggestions.querySelectorAll("button").forEach((button) => (button.onclick = () => {
+                addProgram(button.dataset.url, button.dataset.title);
+                input.value = "";
+                suggestions.innerHTML = "";
+                input.focus();
+              }));
+            } catch (e) {
+              if (version === searchState.version) err("planMsg", e);
+            }
+          }, 250);
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); suggestions.querySelector("button")?.click(); }
+        });
+        $("openPrograms").onclick = () => { dlg("dlgPrograms"); input.focus(); };
+        drawChips();
+        $("buildFromDialog").onclick = () => { $("dlgPrograms").close(); runPlan(); };
+      })();
+      const BUILD_STEPS = ["Reading the catalog…", "Checking prerequisites…", "Merging majors and minors…", "Applying your earned credit…", "Balancing your terms…", "Finishing touches…"];
+      const overlay = { timer: null, ticker: null, step: 0 };
+      function showBuilding(on) {
+        clearTimeout(overlay.timer);
+        clearInterval(overlay.ticker);
+        const el = $("building");
+        if (!on) { el.classList.remove("on"); el.setAttribute("aria-hidden", "true"); return; }
+        overlay.step = 0;
+        $("buildMsg").textContent = BUILD_STEPS[0];
+        // fast (cached) builds finish before the overlay would flash
+        overlay.timer = setTimeout(() => {
+          el.classList.add("on");
+          el.setAttribute("aria-hidden", "false");
+          overlay.ticker = setInterval(() => {
+            overlay.step = Math.min(overlay.step + 1, BUILD_STEPS.length - 1);
+            $("buildMsg").textContent = BUILD_STEPS[overlay.step];
+          }, 1400);
+        }, 180);
+      }
+      // rebuild automatically when something that shapes the plan changes
+      const planKey = () => JSON.stringify([PROGS.map((p) => p.value), $("start").value, $("finishYears").value, $("focus").value,
+        $("completed").value, $("inProgress").value, $("prefer").value, $("maxcr").value, $("needsPrecalc").checked, $("infer").checked, CREDIT_INFO]);
+      let LAST_KEY = null, autoTimer = null;
+      function scheduleAuto() {
+        clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => { if (PROGS.length && planKey() !== LAST_KEY) runPlan(); }, 350);
+      }
+      ["start", "finishYears", "focus"].forEach((id) => $(id).addEventListener("change", scheduleAuto));
+      ["dlgPrograms", "dlgSettings"].forEach((id) => $(id).addEventListener("close", scheduleAuto));
+      let planRun = 0;
+      async function runPlan() {
+        clearTimeout(autoTimer);
+        const myRun = ++planRun;
+        clearTimeout(searchState.timer);
+        searchState.version++;
+        if ($("program").value.trim()) { addProgram($("program").value); $("program").value = ""; }
+        if (!PROGS.length) { dlg("dlgPrograms"); $("program").focus(); return; }
+        $("planMsg").innerHTML = "";
+        $("choices").innerHTML = "";
+        $("programSuggestions").innerHTML = "";
+        $("goPlan").disabled = true;
+        showBuilding(true);
+        LAST_KEY = planKey();
+        try {
+          const r = await api("/api/plan", {
+            programs: PROGS.map((p) => p.value),
+            completed: $("completed").value,
+            in_progress: $("inProgress").value,
+            credit_info: CREDIT_INFO,
+            prefer: $("prefer").value,
+            start: $("start").value,
+            max_credits: $("maxcr").value,
+            finish_years: $("finishYears").value,
+            focus: $("focus").value,
+            needs_precalc: $("needsPrecalc").checked,
+            infer: $("infer").checked,
+          });
+          if (myRun !== planRun) return;
+          if (r.choices) {
+            const idx = r.program_index ?? 0;
+            $("choices").innerHTML =
+              `<h3>Which one did you mean by “${esc(PROGS[idx]?.label || "")}”?</h3>` +
+              r.choices.map((c, i) => `<div><button type="button" class="btn ghost" data-i="${i}">${esc(c.title)}</button></div>`).join("");
+            $("choices").querySelectorAll("button").forEach((button) => (button.onclick = () => {
+              const c = r.choices[+button.dataset.i];
+              PROGS[idx] = { value: c.url, label: c.title };
+              drawChips();
+              runPlan();
+            }));
+            return;
+          }
+          // normalize labels to the catalog titles once they resolve
+          if (r.programs?.length === PROGS.length) {
+            r.programs.forEach((p, i) => (PROGS[i].label = p.title));
+            drawChips();
+          }
+          fillFocus(r.focus_areas || []);
+          $("rcredits").value = $("credits").value;
+          $("rterm").value = $("start").value;
+          if (!$("rterm").value) $("rterm").selectedIndex = 0;
+          renderPlan(r);
+        } catch (e) {
+          if (myRun === planRun) { err("planMsg", e); LAST_KEY = null; }
+        } finally {
+          if (myRun === planRun) { $("goPlan").disabled = false; showBuilding(false); }
+        }
+      }
+      $("goPlan").onclick = () => runPlan();
+      function planWarnings(r) {
+        const where = {};
+        r.terms.forEach((t, i) =>
+          t.items.forEach((x) => {
+            if (x.course) where[x.name] = i;
+          }),
+        );
+        const out = {};
+        r.terms.forEach((t, i) =>
+          t.items.forEach((x) => {
+            if (!x.course) return;
+            const w = [];
+            const seen = (alts, same) =>
+              alts.some(
+                (a) => a in where && (where[a] < i || (same && where[a] === i)),
+              );
+            const ok = (g, same) => seen(g, same) || !g.some((a) => a in where);
+            (x.prereq || []).forEach((g) => {
+              if (!ok(g, x.concurrent))
+                w.push(`needs ${g.join(" or ")} in an earlier term`);
+            });
+            (x.coreq || []).forEach((g) => {
+              if (!ok(g, true))
+                w.push(`needs ${g.join(" or ")} in this or an earlier term`);
+            });
+            const season = /Spring/.test(t.name)
+              ? "Spring"
+              : /Fall/.test(t.name)
+                ? "Fall"
+                : /Summer/.test(t.name)
+                  ? "Summer"
+                  : "";
+            if (x.offered?.length && season && !x.offered.includes(season))
+              w.push(`usually offered ${x.offered.join("/")} only`);
+            if (w.length) out[x.name] = w;
+          }),
+        );
+        return out;
+      }
+      let uidSeq = 0;
+      const electiveCache = {};
+      let PLAN = null;
+      function SEL_SYNC(i) {
+        const cards = [...document.querySelectorAll("#planOut .term")];
+        cards.forEach((c, k) => c.classList.toggle("sel", k === i));
+        const c = cards[i];
+        if (!c) return;
+        $("sterm").value = c.dataset.name;
+        $("courses").value = c.dataset.c;
+      }
+      function chooseElective(item, o, r, orig) {
+        const usedNow = new Set(
+          r.terms.flatMap((t) => t.items.filter((x) => x.course).map((x) => x.name)),
+        );
+              item.slot = {
+                name: item.name,
+                kind: item.kind,
+                credits: item.credits,
+              };
+              const match = o.double_credit?.find((d) => usedNow.has(d.code));
+              if (match) {
+                const existing = r.terms
+                  .flatMap((t) => t.items)
+                  .find((x) => x.course && x.name === match.code);
+                Object.assign(item, {
+                  name: item.slot.name,
+                  title: `Already covered by ${match.code}${existing?.title ? ` · ${existing.title}` : ""}`,
+                  credits: 0,
+                  course: false,
+                  kind: "",
+                  linked: true,
+                  note: `Counts the existing course once toward both requirements`,
+                  added: false,
+                });
+              } else {
+                Object.assign(item, {
+                  name: o.code,
+                  title: o.title,
+                  credits: o.credits,
+                  course: true,
+                  kind: "",
+                  linked: false,
+                  note: `Chosen for: ${item.slot.name}`,
+                  added: false,
+                  prereq: [],
+                  coreq: [],
+                  offered: [],
+                  concurrent: false,
+                  desc: o.desc,
+                });
+              }
+              r.terms.forEach(
+                (t) => (t.credits = t.items.reduce((a, x) => a + x.credits, 0)),
+              );
+        renderPlan(r, orig);
+      }
+      function closePicker() {
+        ["pickPanel", "pickTip"].forEach((id) => {
+          const e = document.getElementById(id);
+          if (e) e.remove();
+        });
+      }
+      function tipHtml(o) {
+        return `<b>${esc(o.code)} · ${esc(o.title)}</b>${o.credits} credits${o.offered?.length ? ` · usually ${o.offered.map(esc).join("/")}` : ""}${o.double_credit?.length ? `<p>Could also satisfy: ${o.double_credit.map((d) => `${esc(d.code)}${d.programs?.length ? ` (${d.programs.map(esc).join(" + ")})` : ""}`).join("; ")}</p>` : ""}${o.desc ? `<p>${esc(o.desc)}</p>` : ""}${o.prereq ? `<p>Prerequisites: ${esc(o.prereq)}</p>` : ""}${o.coreq ? `<p>Corequisites: ${esc(o.coreq)}</p>` : ""}${(o.restrictions || []).map((x) => `<p>${esc(x)}</p>`).join("")}`;
+      }
+      async function openPicker(anchor, item, r, orig) {
+        closePicker();
+        const panel = document.createElement("div");
+        panel.id = "pickPanel";
+        panel.innerHTML = `<input type="search" placeholder="Filter by code or title" aria-label="Filter courses"><div class="note">Loading options…</div><div id="pickList"></div>`;
+        document.body.appendChild(panel);
+        const box = anchor.getBoundingClientRect();
+        panel.style.left =
+          Math.max(8, Math.min(box.left, innerWidth - 350)) + "px";
+        panel.style.top =
+          (box.bottom + 380 > innerHeight
+            ? Math.max(8, box.top - 380)
+            : box.bottom + 4) + "px";
+        const filter = panel.querySelector("input"),
+          list = panel.querySelector("#pickList"),
+          note = panel.querySelector(".note");
+        const required = r.terms
+          .flatMap((t) => t.items)
+          .filter((x) => x.course)
+          .map((x) => ({ code: x.name, programs: x.programs || [] }));
+        const cacheKey =
+          item.kind +
+          ":" +
+          required
+            .map((x) => x.code)
+            .sort()
+            .join(",");
+        try {
+          if (!electiveCache[cacheKey])
+            electiveCache[cacheKey] = await api("/api/electives", {
+              kind: item.kind,
+              required,
+            });
+        } catch (e) {
+          note.textContent = e.message || String(e);
+          return;
+        }
+        if (!document.getElementById("pickPanel")) return;
+        const data = electiveCache[cacheKey],
+          used = new Set(
+            r.terms.flatMap((t) =>
+              t.items.filter((x) => x.course).map((x) => x.name),
+            ),
+          );
+        note.textContent = data.note;
+        const draw = () => {
+          const q = filter.value.trim().toLowerCase();
+          const rows = data.options
+            .filter(
+              (o) =>
+                (!used.has(o.code) || o.double_credit?.length) &&
+                (!q || (o.code + " " + o.title).toLowerCase().includes(q)),
+            )
+            .slice(0, 150);
+          list.innerHTML = rows.length
+            ? rows
+                .map(
+                  (o, i) =>
+                    `<div data-i="${i}"><b>${esc(o.code)}</b> ${esc(o.title)} <span class="mute">· ${o.credits} cr</span>${o.double_credit?.length ? `<small>Double credit: ${o.double_credit.map((d) => `${esc(d.code)}${d.programs?.length ? ` (${d.programs.map(esc).join(" + ")})` : ""}`).join("; ")}</small>` : ""}</div>`,
+                )
+                .join("")
+            : `<div class="mute">No matching courses.</div>`;
+          list.querySelectorAll("div[data-i]").forEach((el) => {
+            const o = rows[+el.dataset.i];
+            el.onmouseenter = () => {
+              let tip = document.getElementById("pickTip");
+              if (!tip) {
+                tip = document.createElement("div");
+                tip.id = "pickTip";
+                document.body.appendChild(tip);
+              }
+              tip.innerHTML = tipHtml(o);
+              const pb = panel.getBoundingClientRect();
+              tip.style.left =
+                (pb.right + 8 + 330 > innerWidth
+                  ? Math.max(8, pb.left - 328)
+                  : pb.right + 8) + "px";
+              tip.style.top =
+                Math.min(pb.top, innerHeight - tip.offsetHeight - 8) + "px";
+            };
+            el.onmouseleave = () => {
+              const tip = document.getElementById("pickTip");
+              if (tip) tip.remove();
+            };
+            el.onclick = () => {
+              closePicker();
+              chooseElective(item, o, r, orig);
+            };
+          });
+        };
+        filter.oninput = draw;
+        draw();
+        filter.focus();
+      }
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest("#pickPanel,.pick-btn")) closePicker();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closePicker();
+      });
+      function renderPlan(r, orig) {
+        closePicker();
+        r.terms.forEach((t) =>
+          t.items.forEach((x) => {
+            if (!x.uid) x.uid = ++uidSeq;
+          }),
+        );
+        orig = orig || JSON.parse(JSON.stringify(r));
+        PLAN = { r, orig };
+        const warns = planWarnings(r);
+        const nw = Object.keys(warns).length;
+        const total = r.terms.reduce((a, t) => a + t.credits, 0);
+        const cap = +$("maxcr").value || 0;
+        const peak = Math.max(0, ...r.terms.map((t) => t.credits));
+        $("stats").classList.remove("mute");
+        $("stats").textContent = `${r.programs.map((p) => p.title).join(" + ")} · ${r.terms.length} terms · ${total} cr · peak ${peak}/term`;
+        const unver = r.unverified || [];
+        const unfit = r.stuck.length || r.unplaced_elective_credits;
+        const flag = (txt, err) => `<button type="button" class="flag ${err ? "err" : ""}" data-notes>${txt}</button>`;
+        $("flags").innerHTML =
+          (nw ? flag(`⚠ ${nw} conflict${nw > 1 ? "s" : ""}`, 1) : "") +
+          (unfit ? flag(`Doesn’t fit in ${r.finish_years} yr`, 1) : "") +
+          (r.overlap.length ? flag(`${r.overlap.length} shared requirement${r.overlap.length > 1 ? "s" : ""}`) : "") +
+          (unver.length ? flag(`${unver.length} unverified prereq${unver.length > 1 ? "s" : ""}`) : "");
+        $("flags").querySelectorAll("[data-notes]").forEach((b) => (b.onclick = () => dlg("dlgNotes")));
+        $("notesBody").innerHTML =
+          `<p class="mute">${r.programs.map((p) => `<a href="${esc(p.url)}" target="_blank">${esc(p.title)}</a>`).join(" · ")}</p>` +
+          (nw ? `<div class="callout err">${nw} course${nw > 1 ? "s" : ""} conflict with prerequisites or term offerings (marked ⚠ on the board):<ul>${Object.entries(warns).map(([k, v]) => `<li><b>${esc(k)}</b>: ${v.map(esc).join("; ")}</li>`).join("")}</ul></div>` : "") +
+          (unfit ? `<div class="callout err">The plan doesn’t fit within ${r.finish_years} years (${r.term_limit} remaining terms) at your credit limit.${r.stuck.length ? ` Couldn’t place: ${r.stuck.map(esc).join(", ")}.` : ""}${r.unplaced_elective_credits ? ` ${r.unplaced_elective_credits} elective credits still need a term.` : ""} Increase the years or the maximum credits per term.</div>` : "") +
+          (r.overlap.length ? `<div class="callout">Shared requirements are scheduled once: ${r.overlap.map((x) => `${esc(x.code)} (${x.programs.map(esc).join(" + ")})`).join("; ")}. Confirm with both departments that each course may count twice.</div>` : "") +
+          (unver.length ? `<div class="callout">Catalog prerequisites that no listed course can satisfy were skipped; check these with your advisor:<ul>${unver.map((u) => `<li><b>${esc(u.course)}</b> needs ${u.needs.map((g) => esc(g.join(" or "))).join(" and ")}</li>`).join("")}</ul></div>` : "") +
+          `<div class="callout">Not modeled: major/standing restrictions, minimum-grade rules, capstone credit thresholds. Pre-calculus placement is assumed unless you tick it in Settings. Confirm with your advisor.</div>` +
+          (r.catalog_plan.length ? `<h3>The catalog’s own recommended four-year plan</h3>${r.catalog_plan.map((p) => `<h4>${esc(p.label)}</h4><div class="chips">${p.items.map((i) => `<span class="chip">${esc(i)}</span>`).join("")}</div>`).join("")}` : "");
+        const selName = $("sterm").value;
+        let sel = r.terms.findIndex((t) => t.name === selName);
+        if (sel < 0) sel = Math.max(0, r.terms.findIndex((t) => !t.current));
+        const tipOf = (x, w) => [x.title, x.programs?.length > 1 ? "Counts toward: " + x.programs.join(" + ") : "", x.note, ...(w || [])].filter(Boolean).join("\n");
+        let h = `<div class="terms" style="--cols:${Math.max(1, Math.ceil(r.terms.length / 2))}">`;
+        r.terms.forEach((t, i) => {
+          const real = t.items.filter((x) => x.course).map((x) => x.name);
+          const over = (cap > 0 && t.credits > cap) || t.credits > 18;
+          h += `<div class="term ${i === sel ? "sel" : ""}" data-term="${i}" data-name="${esc(t.name)}" data-c="${esc(real.join(", "))}" aria-label="${esc(t.name)} drop target">
+            <div class="th"><span class="n">${i + 1}</span><span class="nm" title="${esc(t.name)}">${esc(t.current ? "Now · " : "")}${esc(t.name.replace(/(Spring|Fall|Summer) 20(\d\d)/, "$1 ’$2"))}</span><span class="cr-l ${over ? "over" : ""}">${t.credits} cr</span><button type="button" class="go" data-t="${esc(t.name)}" data-c="${esc(real.join(", "))}">Plan ▸</button></div>
+            <div class="meter ${over ? "over" : ""}"><i style="width:${Math.min(100, (t.credits / 18) * 100)}%"></i></div><ul>` +
+            t.items.map((x, j) => {
+              const w = warns[x.name];
+              const mv = !x.linked ? `<span class="mv item-actions"><button type="button" data-move="-1" data-term="${i}" data-item="${j}" aria-label="Move ${esc(x.name)} to previous term" title="Previous term">←</button><button type="button" data-move="1" data-term="${i}" data-item="${j}" aria-label="Move ${esc(x.name)} to next term" title="Next term">→</button></span>` : "";
+              if (!x.course && x.kind)
+                return `<li class="gen pick-btn" draggable="true" data-uid="${x.uid}" data-pick="${x.uid}" title="Click to choose a course"><span class="c" style="grid-column:1/3">${esc(x.name)} ▾</span><span class="k">${x.credits}</span>${mv}</li>`;
+              return `<li class="${x.added ? "added" : ""}" draggable="${x.linked ? "false" : "true"}" data-uid="${x.uid}" title="${esc(tipOf(x, w))}"><span class="c">${esc(x.name)}</span><span class="t">${esc(x.title || "")}</span><span class="k">${x.credits || ""}${w ? ` <span class="wn">⚠</span>` : ""}</span>${x.counts_as ? `<span class="tag">Counts as ${esc(x.counts_as)}</span>` : ""}${x.slot ? `<button type="button" class="un" data-unpick="${x.uid}">↺ change (${esc(x.slot.name)})</button>` : ""}${mv}</li>`;
+            }).join("") + `</ul></div>`;
+        });
+        h += "</div>";
+        $("planOut").innerHTML = h;
+        SEL_SYNC(sel);
+        const moveCourse = (uid, target) => {
+          uid = +uid;
+          const source = r.terms.findIndex((t) =>
+            t.items.some((x) => x.uid === uid),
+          );
+          if (
+            source < 0 ||
+            target < 0 ||
+            target >= r.terms.length ||
+            source === target
+          )
+            return;
+          const itemIndex = r.terms[source].items.findIndex(
+            (x) => x.uid === uid,
+          );
+          const [item] = r.terms[source].items.splice(itemIndex, 1);
+          r.terms[target].items.push(item);
+          r.terms.forEach(
+            (t) => (t.credits = t.items.reduce((sum, x) => sum + x.credits, 0)),
+          );
+          renderPlan(r, orig);
+        };
+        $("planOut")
+          .querySelectorAll(".term")
+          .forEach((term) => {
+            term.addEventListener("dragover", (e) => {
+              e.preventDefault();
+              term.classList.add("drag-over");
+            });
+            term.addEventListener("dragleave", (e) => {
+              if (!term.contains(e.relatedTarget))
+                term.classList.remove("drag-over");
+            });
+            term.addEventListener("drop", (e) => {
+              e.preventDefault();
+              term.classList.remove("drag-over");
+              moveCourse(
+                e.dataTransfer.getData("text/plain"),
+                +term.dataset.term,
+              );
+            });
+          });
+        $("planOut")
+          .querySelectorAll("li[draggable=true]")
+          .forEach((item) => {
+            item.addEventListener("dragstart", (e) => {
+              closePicker();
+              e.dataTransfer.setData("text/plain", item.dataset.uid);
+              e.dataTransfer.effectAllowed = "move";
+              item.classList.add("dragging");
+            });
+            item.addEventListener("dragend", () => {
+              item.classList.remove("dragging");
+              $("planOut")
+                .querySelectorAll(".term")
+                .forEach((t) => t.classList.remove("drag-over"));
+            });
+          });
+        $("planOut")
+          .querySelectorAll(".item-actions button")
+          .forEach(
+            (b) =>
+              (b.onclick = () =>
+                moveCourse(
+                  r.terms[+b.dataset.term].items[+b.dataset.item].uid,
+                  +b.dataset.term + +b.dataset.move,
+                )),
+          );
+        const findItem = (uid) =>
+          r.terms.flatMap((t) => t.items).find((x) => x.uid === +uid);
+        $("planOut")
+          .querySelectorAll("[data-pick]")
+          .forEach(
+            (b) =>
+              (b.onclick = (e) => {
+                e.stopPropagation();
+                openPicker(b, findItem(b.dataset.pick), r, orig);
+              }),
+          );
+        $("planOut")
+          .querySelectorAll("[data-unpick]")
+          .forEach(
+            (b) =>
+              (b.onclick = () => {
+                const it = findItem(b.dataset.unpick);
+                Object.assign(it, {
+                  name: it.slot.name,
+                  kind: it.slot.kind,
+                  credits: it.slot.credits,
+                  course: false,
+                  title: "",
+                  note: "choose a course",
+                  prereq: [],
+                  coreq: [],
+                  offered: [],
+                });
+                delete it.slot;
+                r.terms.forEach(
+                  (t) =>
+                    (t.credits = t.items.reduce((a, x) => a + x.credits, 0)),
+                );
+                renderPlan(r, orig);
+              }),
+          );
+        $("resetPlan").onclick = () =>
+          renderPlan(JSON.parse(JSON.stringify(orig)));
+        $("planOut").querySelectorAll(".term").forEach((card) => {
+          card.addEventListener("click", (e) => {
+            if (e.target.closest("button, .pick-btn")) return;
+            SEL_SYNC(+card.dataset.term);
+          });
+        });
+        $("planOut").querySelectorAll("button[data-t]").forEach((b) => (b.onclick = () => {
+          SEL_SYNC(+b.closest(".term").dataset.term);
+          runSched();
+        }));
+      }
+
+      // ---------- 2. schedule ----------
+
+      async function runSched(keepView = false) {
+        const pane = $("pane-tt");
+        const top = pane.scrollTop;
+        if (!keepView) {
+          $("schedMsg").innerHTML = "";
+          $("schedOut").innerHTML = "";
+          $("suggOut").innerHTML = "";
+          busy("spinSched", true, "goSched");
+        }
+
+        try {
+          const ctx = semesterContext();
+          const r = await api("/api/semester", {
+            term: $("sterm").value,
+            courses: $("courses").value,
+            ...ctx,
+            earliest: $("earliest").value,
+            latest: $("latest").value,
+            avoid_days: [...$("avoid").querySelectorAll("input:checked")]
+              .map((i) => i.value)
+              .join(""),
+            include_closed: $("closed").checked,
+            pins: Object.values(PINS),
+          });
+
+          renderSched(r);
+          renderSuggestions(r);
+          if (!keepView) tab(r.options?.length || !Object.keys(r.suggestions || {}).length ? "tt" : "sg");
+          $("connectBox").style.display = r.live === false ? "" : "none";
+          if (keepView) pane.scrollTop = top;
+        } catch (e) {
+          err("schedMsg", e);
+        } finally {
+          if (!keepView) busy("spinSched", false, "goSched");
+        }
+      }
+      $("goSched").onclick = () => runSched();
+      $("goConnect").onclick = async () => {
+        try {
+          await api("/api/connect", { cookie: $("cookie").value });
+          $("cookie").value = "";
+          $("connectMsg").textContent = "Saved for this session — close this and rebuild the schedule.";
+        } catch (e) {
+          $("connectMsg").textContent = e.message || e;
+        }
+      };
+      // what the planner knows about the chosen term: finished courses, open slots, required alternatives
+      function semesterContext() {
+        const ctx = { done: $("completed").value + "," + $("inProgress").value, slots: [], required: [], alternatives: {} };
+        if (!PLAN) return ctx;
+        const idx = PLAN.r.terms.findIndex((t) => t.name === $("sterm").value);
+        const done = [];
+        PLAN.r.terms.forEach((t, i) => {
+          t.items.forEach((x) => {
+            if (x.course && (i < idx || (t.current && idx !== i))) done.push(x.name);
+            if (x.course) ctx.required.push({ code: x.name, programs: x.programs || [] });
+            if (i === idx && !x.course && x.kind) ctx.slots.push({ kind: x.kind, uid: x.uid, name: x.name });
+            if (i === idx && x.course && x.alts?.length) ctx.alternatives[x.name] = x.alts;
+          });
+        });
+        ctx.done += "," + done.join(",");
+        return ctx;
+      }
+      const SUGG_TITLES = { technical: "Technical elective", aero: "Aerospace elective", hss: "Humanities / social science", hssup: "Upper-division H&SS", free: "Free elective", math: "Math / science elective", writing: "Writing" };
+      function renderSuggestions(r) {
+        const kinds = Object.entries(r.suggestions || {});
+        const alts = Object.entries(r.alternatives || {});
+        if (!kinds.length && !alts.length) return;
+        const row = (o, slotKind) => `<li class="sugg"><b>${esc(o.code)}</b> <span class="cr">${esc(o.credits)} cr</span> ${esc(o.title)}
+          <div class="chips">${(o.why || []).map((w) => `<span class="chip">${esc(w)}</span>`).join("")}${(o.sections || []).length ? `<span class="chip">${o.sections.map((x) => esc(x.kind + " " + x.no + " " + x.when)).join(" · ")}</span>` : ""}</div>
+          ${slotKind ? `<button type="button" class="btn ghost" data-add="${esc(o.code)}" data-kind="${esc(slotKind)}">Add to plan</button>` : ""}</li>`;
+        $("suggOut").innerHTML = `<div class="card"><h3>Advisor suggestions for ${esc(r.term)}</h3>
+          ${r.live ? "" : `<div class="callout">Showing catalog-based suggestions (no live section times). Offerings and seats are unverified.</div>`}
+          ${kinds.map(([k, v]) => `<h4 style="margin:12px 0 4px">${esc(SUGG_TITLES[k] || k)}</h4><div class="mute">${esc(v.note || "")}</div>${v.options.length ? `<ul class="suggs">${v.options.map((o) => row(o, k)).join("")}</ul>` : `<div class="mute">Nothing eligible this term.</div>`}`).join("")}
+          ${alts.map(([c, list]) => `<h4 style="margin:12px 0 4px">Alternatives to ${esc(c)}</h4><ul class="suggs">${list.map((o) => row(o, "")).join("")}</ul>`).join("")}</div>`;
+        $("suggOut").querySelectorAll("button[data-add]").forEach((b) => (b.onclick = async () => {
+          const idx = PLAN.r.terms.findIndex((t) => t.name === $("sterm").value);
+          const item = PLAN.r.terms[idx]?.items.find((x) => !x.course && x.kind === b.dataset.kind);
+          const opt = (r.suggestions[b.dataset.kind]?.options || []).find((o) => o.code === b.dataset.add);
+          if (!item || !opt) return;
+          chooseElective(item, opt, PLAN.r, PLAN.orig);
+          const t = PLAN.r.terms[idx];
+          $("courses").value = t.items.filter((x) => x.course).map((x) => x.name).join(", ");
+          runSched();
+        }));
+      }
+      const t12 = (m) => {
+        const h = Math.floor(m / 60);
+        return `${h % 12 || 12}:${String(m % 60).padStart(2, "0")}${h < 12 ? "a" : "p"}`;
+      };
+
+      // how to rank timetables; each key returns a number where lower is better
+      const PRIORITIES = {
+        balanced: { label: "Balanced (default)", note: "Few campus days, little downtime, not too early.", key: (m) => m.score },
+        fewdays: { label: "Fewest days on campus", note: "Packs classes into as few days as possible.", key: (m) => m.days * 1000 + m.gaps },
+        freefri: { label: "Keep Fridays free", note: "Avoids Friday classes first, then fewer days.", key: (m) => (m.fri ? 1e6 : 0) + m.days * 1000 + m.gaps },
+        gaps: { label: "Least downtime between classes", note: "Smallest total gaps between a day's classes.", key: (m) => m.gaps * 10 + m.days },
+        late: { label: "Latest starts (sleep in)", note: "Pushes the first class of each day as late as possible.", key: (m) => -m.avgStart * 10 + m.days },
+        early: { label: "Done earliest in the day", note: "Finishes each day as early as possible.", key: (m) => m.avgEnd * 10 + m.days },
+        short: { label: "Shortest days", note: "Minimizes the longest day from first to last class.", key: (m) => m.longest * 10 + m.days },
+        open: { label: "Most open seats", note: "Avoids full or closed sections.", key: (m) => m.closed * 1e5 + m.score },
+      };
+      let PRIORITY = "balanced";
+      let PINS = {};   // "CODE|KIND" -> CRN the user fixed; the scheduler fits everything else around these
+      function pinBar(r) {
+        const valid = new Set(Object.values(r.sections || {}).flat().map((x) => x.crn));
+        Object.keys(PINS).forEach((k) => valid.has(PINS[k]) || delete PINS[k]);
+        const n = Object.keys(PINS).length;
+        return n ? `<div class="pinbar">📌 ${n} section${n === 1 ? "" : "s"} pinned <a href="#" id="clearPins">Clear</a></div>` : "";
+      }
+      function sectionCell(r, s) {
+        const key = `${s.code}|${s.kind}`;
+        const alts = ((r.sections || {})[s.code] || []).filter((x) => x.kind === s.kind);
+        const pinned = PINS[key] === s.crn;
+        const sel = alts.length > 1
+          ? `<select class="secsel" data-key="${esc(key)}" title="Pick a section; the rest of the schedule adapts">` +
+            alts.map((x) => {
+              const bad = x.crn !== s.crn && (r.blocked || []).includes(x.crn);
+              const short = `${x.no} · ${x.when || "No set time"}${x.open ? "" : " (closed)"}${bad ? " — conflicts" : ""}`;
+              const full = `${x.no} · ${x.when || "No set time"}${x.instructor ? " · " + x.instructor : ""}${x.open ? "" : " (closed)"}${bad ? " — conflicts" : ""}`;
+              return `<option value="${esc(x.crn)}" ${x.crn === s.crn ? "selected" : ""} ${bad ? "disabled" : ""} data-short="${esc(short)}" data-full="${esc(full)}">${esc(short)}</option>`;
+            }).join("") +
+            `</select>`
+          : `<b>${esc(s.no || "")}</b> · ${esc(s.when || "No set time")}`;
+        return `${sel} <button type="button" class="pinbtn ${pinned ? "on" : ""}" data-key="${esc(key)}" data-crn="${esc(s.crn)}" title="${pinned ? "Unpin this section" : "Pin this section"}">📌</button>`;
+      }
+      function wirePins() {
+        document.querySelectorAll("select.secsel").forEach((sel) => {
+          // the instructor is shown under the row; it only appears in the option list while the dropdown is open
+          const label = (full) => [...sel.options].forEach((op) => (op.textContent = full ? op.dataset.full : op.dataset.short));
+          sel.addEventListener("focus", () => label(true));
+          sel.addEventListener("blur", () => label(false));
+          sel.onchange = () => { label(false); sel.blur(); PINS[sel.dataset.key] = sel.value; runSched(true); };
+        });
+        document.querySelectorAll("button.pinbtn").forEach((btn) => {
+          btn.onclick = () => {
+            if (PINS[btn.dataset.key] === btn.dataset.crn) delete PINS[btn.dataset.key]; else PINS[btn.dataset.key] = btn.dataset.crn;
+            runSched(true);
+          };
+        });
+        const clear = $("clearPins");
+        if (clear) clear.onclick = (e) => { e.preventDefault(); PINS = {}; runSched(true); };
+      }
+      function schedMetrics(o) {
+        const byDay = {};
+        (o.sections || []).forEach((s) => (s.meets || []).forEach((m) => (byDay[m[0]] ||= []).push([m[1], m[2]])));
+        const days = Object.keys(byDay);
+        let gaps = 0, longest = 0, startSum = 0, endSum = 0;
+        days.forEach((d) => {
+          const iv = byDay[d].sort((a, b) => a[0] - b[0]);
+          for (let i = 1; i < iv.length; i++) gaps += Math.max(0, iv[i][0] - iv[i - 1][1]);
+          const first = iv[0][0], last = Math.max(...iv.map((x) => x[1]));
+          longest = Math.max(longest, last - first);
+          startSum += first;
+          endSum += last;
+        });
+        const n = days.length || 1;
+        return {
+          days: days.length, gaps, longest, avgStart: startSum / n, avgEnd: endSum / n,
+          fri: days.includes("4"), closed: (o.sections || []).filter((s) => !s.open).length,
+          score: o.score || 0, first: days.length ? startSum / n : 0,
+        };
+      }
+      const hm = (mins) => (mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? String(mins % 60).padStart(2, "0") : ""}` : `${mins}m`);
+      function metricText(m) {
+        const parts = {
+          balanced: `${m.days} days · ${hm(m.gaps)} gaps`,
+          fewdays: `${m.days} day${m.days === 1 ? "" : "s"}`,
+          freefri: m.fri ? "Friday class" : "Fridays free",
+          gaps: `${hm(m.gaps)} gaps`,
+          late: `avg start ${t12(Math.round(m.avgStart))}`,
+          early: `avg finish ${t12(Math.round(m.avgEnd))}`,
+          short: `longest day ${hm(m.longest)}`,
+          open: m.closed ? `${m.closed} closed` : "all open",
+        };
+        return parts[PRIORITY];
+      }
+      function renderSched(r) {
+        const options = (Array.isArray(r.options) ? r.options : [])
+          .map((o, i) => ({ ...o, _m: schedMetrics(o), _i: i }))
+          .sort((a, b) => PRIORITIES[PRIORITY].key(a._m) - PRIORITIES[PRIORITY].key(b._m) || a._i - b._i);
+        const problems = Array.isArray(r.problems) ? r.problems : [];
+        const booking = Array.isArray(r.booking) ? r.booking : [];
+
+        let h = problems
+          .map((p) => `<div class="callout">${esc(p)}</div>`)
+          .join("");
+        const pinsHtml = pinBar(r);
+
+        if (!options.length) {
+          if (r.live === false || !$("courses").value.trim()) {
+            $("schedOut").innerHTML = h;
+            return;
+          }
+          $("schedOut").innerHTML =
+            h + pinsHtml +
+            `<div class="callout err">No schedule found for ${esc(r.term || "the selected term")}. Check section availability, course pairings, and time restrictions.</div>`;
+          wirePins();
+          return;
+        }
+
+        const colors = {};
+        options[0].sections.forEach((s) => {
+          colors[s.code] ??= PAL[Object.keys(colors).length % PAL.length];
+        });
+
+        h += pinsHtml;
+        h +=
+          `<div class="prio"><label for="prio">Prioritize</label><select id="prio">` +
+          Object.entries(PRIORITIES).map(([k, v]) => `<option value="${k}" ${k === PRIORITY ? "selected" : ""}>${esc(v.label)}</option>`).join("") +
+          `</select></div><div class="prio-note">${esc(PRIORITIES[PRIORITY].note)}</div>` +
+          `<div class="sub-tabs" id="otabs">` +
+          `<span class="hint">${options.length} schedule${options.length === 1 ? "" : "s"}</span>` +
+          options
+            .map((o, i) => {
+              const mt = (o.sections || []).flatMap((s) => (Array.isArray(s.meets) ? s.meets : []));
+              const dayset = [...new Set(mt.map((m) => m[0]))].sort();
+              const sum = mt.length
+                ? `${dayset.map((d) => DAYS[d]?.[0] === "T" ? DAYS[d].slice(0, 2) : DAYS[d]?.[0]).join("")} · ${t12(Math.min(...mt.map((m) => m[1])))}–${t12(Math.max(...mt.map((m) => m[2])))}`
+                : "no set times";
+              return `<button data-i="${i}" class="${i ? "" : "on"}" title="${esc(sum)}">Option ${i + 1}<small>${esc(sum)}</small><small><b>${esc(metricText(o._m))}</b></small></button>`;
+            })
+            .join("") +
+          `</div><div id="oview"></div>`;
+
+        h +=
+          `<details style="margin-top:10px"><summary>Register in this order</summary>
+    <div class="mute">Courses with fewer open sections should be prioritized. Confirm linked sections and restrictions in CU Class Search.</div>
+    <table><tr><th>Course</th><th>Open sections</th></tr>` +
+          booking
+            .map(
+              (b) =>
+                `<tr><td>${esc(b.code)}</td><td>${esc(b.open)} of ${esc(b.total)}</td></tr>`,
+            )
+            .join("") +
+          `</table>
+    <p class="mute">A conflict-free timetable does not guarantee registration eligibility. Confirm prerequisites, reserved seats, and required lecture/lab/recitation combinations before registering.</p>
+    </details>`;
+
+        $("schedOut").innerHTML = h;
+        wirePins();
+
+        // one shared time axis so the scale doesn't shift between options
+        const allMt = options.flatMap((o) => (o.sections || []).flatMap((s) => (Array.isArray(s.meets) ? s.meets : [])));
+        const AXIS = {
+          lo: allMt.length ? Math.floor(Math.min(...allMt.map((m) => m[1]), 480) / 60) * 60 : 480,
+          hi: allMt.length ? Math.ceil(Math.max(...allMt.map((m) => m[2]), 1020) / 60) * 60 : 1020,
+          days: allMt.length ? Math.max(5, ...allMt.map((m) => m[0] + 1)) : 5,
+        };
+
+        const draw = (i) => {
+          const o = options[i];
+          const secs = Array.isArray(o.sections) ? o.sections : [];
+          const mt = secs.flatMap((s) =>
+            Array.isArray(s.meets) ? s.meets : [],
+          );
+
+          const { lo, hi, days } = AXIS;
+
+          const px = 33 / 60;
+          let c = `<div class="card">`;
+
+          if (!mt.length) {
+            c += `<div class="callout">These sections have no scheduled meeting times to display.</div>`;
+          }
+
+          c +=
+            `<div class="cal" style="--cols:${days}">
+      <div class="hd"></div>` +
+            DAYS.slice(0, days)
+              .map((d) => `<div class="hd">${d}</div>`)
+              .join("") +
+            `<div class="hrs">`;
+
+          for (let m = lo; m < hi; m += 60) {
+            c += `<div>${t12(m)}</div>`;
+          }
+
+          c += `</div>`;
+
+          for (let d = 0; d < days; d++) {
+            c += `<div class="col" style="height:${(hi - lo) * px}px">`;
+
+            secs.forEach((s) => {
+              (s.meets || [])
+                .filter((m) => m[0] === d)
+                .forEach((m) => {
+                  c += `<div class="blk"
+            style="top:${(m[1] - lo) * px}px;height:${Math.max(8, (m[2] - m[1]) * px - 2)}px;background:${colors[s.code] || PAL[0]}">
+            <b>${esc(s.code)} ${esc(s.kind)}</b>
+            ${t12(m[1])}–${t12(m[2])}<br>${esc(s.instructor || "")}
+          </div>`;
+                });
+            });
+
+            c += `</div>`;
+          }
+
+          c += `</div><div class="ccards">`;
+          const groups = {};
+          secs.forEach((x) => (groups[x.code] ||= []).push(x));
+          Object.entries(groups).forEach(([code, list]) => {
+            c += `<div class="ccard" style="--c:${colors[code] || PAL[0]}">
+              <div class="chd"><b>${esc(code)}</b><span>${esc(list[0].title || "")}</span></div>` +
+              list.map((x) => `<div class="csec">
+                <div class="crow"><span class="kind">${esc(x.kind || "")}</span>${sectionCell(r, x)}
+                  <span class="dot ${x.open ? "" : "x"}" title="${x.open ? "Open" : "Closed / full"}"></span></div>
+                <div class="cmeta">${x.instructor ? esc(x.instructor) + " · " : ""}CRN <b>${esc(x.crn || "")}</b>${x.open ? "" : " · closed"}</div>
+              </div>`).join("") + `</div>`;
+          });
+          c += `</div>
+      <button class="btn ghost" style="margin-top:10px" id="cp">Copy CRNs</button>
+      <span id="copyStatus" class="mute" role="status" aria-live="polite"></span>
+      </div>`;
+
+          $("oview").innerHTML = c;
+          wirePins();
+
+          $("cp").onclick = async () => {
+            const crns = secs
+              .map((s) => s.crn)
+              .filter(Boolean)
+              .join(", ");
+            try {
+              if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(crns);
+              } else {
+                const input = document.createElement("textarea");
+                input.value = crns;
+                document.body.appendChild(input);
+                input.select();
+                const ok = document.execCommand("copy");
+                input.remove();
+                if (!ok) throw new Error("Copy unavailable");
+              }
+              $("copyStatus").textContent = "Copied!";
+            } catch {
+              $("copyStatus").textContent =
+                "Copy failed; select the CRNs manually.";
+            }
+          };
+        };
+
+        draw(0);
+
+        $("prio").onchange = (e) => { PRIORITY = e.target.value; renderSched(r); };
+
+        $("otabs")
+          .querySelectorAll("button")
+          .forEach((b) => {
+            b.onclick = () => {
+              $("otabs")
+                .querySelectorAll("button")
+                .forEach((x) => x.classList.toggle("on", x === b));
+              draw(+b.dataset.i);
+            };
+          });
+      }
+
+      // ---------- 3. registration ----------
+      async function runReg() {
+        $("regMsg").innerHTML = "";
+        $("regOut").innerHTML = "";
+        busy("spinReg", true, "goReg");
+        try {
+          const q = {
+              term: $("rterm").value,
+              credits: $("rcredits").value,
+              enroll_url: $("enrollUrl").value,
+            },
+            r = await api("/api/register", q);
+          renderReg(r, q);
+        } catch (e) {
+          err("regMsg", e);
+        } finally {
+          busy("spinReg", false, "goReg");
+        }
+      }
+      $("goReg").onclick = runReg;
+      function renderReg(r, q) {
+        const fmt = (s, t = true) => {
+          const d = new Date(s);
+          return (
+            d.toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }) +
+            (t && String(s).includes("T") && !/T00:00/.test(s)
+              ? " · " +
+                d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              : "")
+          );
+        };
+        const days = (s) => Math.ceil((new Date(s) - Date.now()) / 864e5),
+          ev = [];
+        if (r.cart_opens)
+          ev.push({
+            t: r.cart_opens,
+            h: "Shopping cart opens",
+            d: "Add your planned classes ahead of time so registration is one click.",
+          });
+        if (r.reservation)
+          ev.push({
+            t: r.reservation[0],
+            h: "Course reservations",
+            d: "Through " + fmt(r.reservation[1]) + " (if you’re eligible).",
+          });
+        r.blocks.forEach((b) => {
+          if (b.mine)
+            ev.push({
+              t: b.start,
+              h: "YOUR BLOCK: " + b.label,
+              d: "First appointment of the block. Your exact slot (staggered ~15 min) is in Buff Portal.",
+              you: 1,
+            });
+          else if (b.credit_based) ev.push({ t: b.start, h: b.label, d: "" });
+        });
+        if (r.open_enrollment)
+          ev.push({
+            t: r.open_enrollment,
+            h: "Open enrollment (everyone)",
+            d: "",
+          });
+        ev.sort((a, b) => new Date(a.t) - new Date(b.t));
+        const mine = ev.find((e) => e.you);
+        let h =
+          `<div class="card"><h2>${esc(r.term)}</h2>` +
+          (mine
+            ? `<div class="big">${days(mine.t) > 0 ? "Your window opens in " + days(mine.t) + " day" + (days(mine.t) == 1 ? "" : "s") : "Your window is open now"}</div><div class="mute">${fmt(mine.t)}</div>`
+            : `<div class="callout">No credit-based block matched; check Buff Portal.</div>`) +
+          `<div class="tl" style="margin-top:18px">` +
+          ev
+            .map(
+              (e) =>
+                `<div class="ev ${e.you ? "you" : ""} ${new Date(e.t) < Date.now() && !e.you ? "past" : ""}"><b>${esc(e.h)}</b><div class="mute">${fmt(e.t)}</div>${e.d ? `<div>${esc(e.d)}</div>` : ""}</div>`,
+            )
+            .join("") +
+          `</div>`;
+        r.extras.forEach((x) => (h += `<div class="mute">${esc(x)}</div>`));
+        h += `<a class="btn" style="display:inline-block;text-decoration:none" href="/api/ics?${new URLSearchParams({ ...q, appointment: $("appt").value })}">Add to my calendar (.ics)</a>
+  <p class="mute">Source: <a href="${esc(r.source)}" target="_blank">${esc(r.source)}</a></p></div>`;
+        $("regOut").innerHTML = h;
+      }
+    
+      // ---------- saved state: kept on the server so every visit looks the same ----------
+      const STATE_IDS = ["start", "finishYears", "focus", "completed", "inProgress", "credits", "maxcr", "prefer", "auditText",
+        "sterm", "courses", "earliest", "latest", "rterm", "rcredits", "appt", "enrollUrl"];
+      const STATE_CHECKS = ["needsPrecalc", "infer", "closed"];
+      let stateReady = false, saveTimer = null, SCHED_RAN = false;
+      function collectState() {
+        const v = {};
+        STATE_IDS.forEach((id) => (v[id] = $(id).value));
+        STATE_CHECKS.forEach((id) => (v[id] = $(id).checked));
+        v.avoid = [...$("avoid").querySelectorAll("input:checked")].map((i) => i.value).join("");
+        return {
+          v, progs: PROGS, creditInfo: CREDIT_INFO, priority: PRIORITY, pins: PINS, schedRan: SCHED_RAN,
+          tab: document.querySelector("#tabs button.on")?.dataset.tab || "tt",
+          plan: PLAN ? { r: PLAN.r, orig: PLAN.orig } : null,
+        };
+      }
+      function saveNow(keepalive) {
+        clearTimeout(saveTimer);
+        if (!stateReady) return;
+        fetch("/api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(collectState()), keepalive: !!keepalive }).catch(() => {});
+      }
+      function saveSoon() {
+        if (!stateReady) return;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => saveNow(), 400);
+      }
+      ["input", "change", "click"].forEach((ev) => document.addEventListener(ev, saveSoon));
+      document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && saveNow(true));
+      window.addEventListener("pagehide", () => saveNow(true));
+      const origRenderPlan = renderPlan;
+      renderPlan = function (r, orig) { origRenderPlan(r, orig); saveSoon(); };
+      const origRenderSched = renderSched;
+      renderSched = function (r) { SCHED_RAN = !!$("courses").value.trim(); origRenderSched(r); saveSoon(); };
+      (async function restore() {
+        let d = null;
+        try { d = await (await fetch("/api/state")).json(); } catch {}
+        try {
+          if (d && d.v) {
+            const setVal = (id, val) => {
+              const el = $(id);
+              if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === val)) return;
+              el.value = val;
+            };
+            STATE_IDS.forEach((id) => d.v[id] != null && id !== "focus" && setVal(id, d.v[id]));
+            STATE_CHECKS.forEach((id) => d.v[id] != null && ($(id).checked = !!d.v[id]));
+            $("avoid").querySelectorAll("input").forEach((i) => (i.checked = (d.v.avoid || "").includes(i.value)));
+            PROGS = d.progs || [];
+            CREDIT_INFO = d.creditInfo || {};
+            if (PRIORITIES[d.priority]) PRIORITY = d.priority;
+            PINS = d.pins && typeof d.pins === "object" ? d.pins : {};
+            drawChips();
+            if (d.plan?.r?.terms) {
+              uidSeq = Math.max(0, ...d.plan.r.terms.flatMap((t) => t.items.map((x) => x.uid || 0)));
+              fillFocus(d.plan.r.focus_areas || []);
+              setVal("focus", d.v.focus || "");
+              origRenderPlan(d.plan.r, d.plan.orig);
+              LAST_KEY = planKey();
+            } else if (PROGS.length) {
+              stateReady = true;
+              runPlan();
+            }
+            if (d.tab) tab(d.tab);
+            if (d.schedRan && PLAN && $("courses").value.trim()) runSched();
+          }
+        } catch (e) { console.error("restore failed", e); }
+        stateReady = true;
+      })();
+    </script>
+  </body>
+</html>
